@@ -56,8 +56,10 @@ abstract class Tree implements Contract, Localization
 
         $key = "structure-{$this->handle()}-{$this->locale()}-{$this->treeHash()}";
 
-        return Blink::once($key, function () {
-            return $this->structure()->validateTree($this->tree, $this->locale());
+        return Blink::once($key, function () use ($key) {
+            return Cache::rememberForever($key, function () {
+                return $this->structure()->validateTree($this->tree, $this->locale());
+            });
         });
     }
 
