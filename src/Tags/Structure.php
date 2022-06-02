@@ -2,8 +2,6 @@
 
 namespace Statamic\Tags;
 
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Config;
 use Statamic\Contracts\Structures\Structure as StructureContract;
 use Statamic\Exceptions\CollectionNotFoundException;
 use Statamic\Exceptions\NavigationNotFoundException;
@@ -12,6 +10,7 @@ use Statamic\Facades\Nav;
 use Statamic\Facades\Site;
 use Statamic\Facades\URL;
 use Statamic\Query\ItemQueryBuilder;
+use Statamic\Structures\PageCache;
 use Statamic\Structures\TreeBuilder;
 use Statamic\Support\Str;
 use Statamic\Tags\Concerns\GetsQuerySelectKeys;
@@ -124,19 +123,15 @@ class Structure extends Tags
     {
         $pages = collect($tree)->map(function ($item, $index) use ($parent, $depth, $tree) {
             $page = $item['page'];
-            $keys = $this->getQuerySelectKeys($page);
 
-            $ref = $page->id() ?? $page->reference();
+            $pageCache = new PageCache($page);
 
-            $data = $this->remember(
-                "pages:augmented:{$ref}".md5(json_encode($keys)),
-                fn () => $page->toAugmentedArray($keys)
-            );
+            $data = $pageCache->get('toAugmentedArray', $this->getQuerySelectKeys($page));
 
             $children = empty($item['children']) ? [] : $this->toArray($item['children'], $data, $depth + 1);
 
-            $url = $this->remember("pages:urls:relative:{$ref}", fn () => $page->urlWithoutRedirect());
-            $absoluteUrl = $this->remember("pages:urls:absolute:{$ref}", fn () => $page->absoluteUrl());
+            $url = $pageCache->get('urlWithoutRedirect');
+            $absoluteUrl = $pageCache->get('absoluteUrl');
 
             return array_merge($data, [
                 'children'    => $children,
@@ -155,15 +150,6 @@ class Structure extends Tags
         $this->updateIsParent($pages);
 
         return $pages->all();
-    }
-
-    protected function remember($key, $callable)
-    {
-        return Cache::remember(
-            $key,
-            now()->addSeconds(Config::get('statamic.structures.cache_ttl')),
-            $callable
-        );
     }
 
     protected function updateIsParent($pages, &$parent = null)
