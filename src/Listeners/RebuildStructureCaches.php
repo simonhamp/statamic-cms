@@ -2,16 +2,16 @@
 
 namespace Statamic\Listeners;
 
-use Statamic\Events\CollectionSaved;
 use Statamic\Events\CollectionDeleted;
-use Statamic\Events\CollectionTreeSaved;
+use Statamic\Events\CollectionSaved;
 use Statamic\Events\CollectionTreeDeleted;
-use Statamic\Events\EntrySaved;
+use Statamic\Events\CollectionTreeSaved;
 use Statamic\Events\EntryDeleted;
-use Statamic\Events\NavSaved;
+use Statamic\Events\EntrySaved;
 use Statamic\Events\NavDeleted;
-use Statamic\Events\NavTreeSaved;
+use Statamic\Events\NavSaved;
 use Statamic\Events\NavTreeDeleted;
+use Statamic\Events\NavTreeSaved;
 use Statamic\Structures\PageCache;
 
 class RebuildStructureCaches

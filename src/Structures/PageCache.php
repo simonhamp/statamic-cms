@@ -18,7 +18,7 @@ class PageCache
     }
 
     /**
-     * Call some method on the underlying page, but cache the result
+     * Call some method on the underlying page, but cache the result.
      */
     public function get($method, ...$params)
     {
@@ -35,7 +35,7 @@ class PageCache
 
     public function rebuildAll(array $prebuild = [])
     {
-        if (empty($caches = Cache::get($this->indexKey(), [])) && !empty($prebuild)) {
+        if (empty($caches = Cache::get($this->indexKey(), [])) && ! empty($prebuild)) {
             $this->prebuild($prebuild);
 
             return;
@@ -57,7 +57,7 @@ class PageCache
 
     /**
      * Keep a tally of all of the different methods we've called, with their parameters,
-     * so we can opportunistically rebuild these caches later
+     * so we can opportunistically rebuild these caches later.
      */
     protected function index(string $method, ?array $params = []): void
     {
@@ -77,7 +77,7 @@ class PageCache
 
     /**
      * toAugmentedArray is a special case because we need to cache the exact structure as was selected,
-     * so we need to key the cache based
+     * so we need to key the cache based.
      */
     protected function getToAugmentedArray(?array $keys = [])
     {
@@ -92,7 +92,6 @@ class PageCache
 
     protected function prebuild(array $methods)
     {
-        dump($methods);
         foreach ($methods as $method) {
             $this->get($method);
         }
