@@ -26,6 +26,7 @@ abstract class Tree implements Contract, Localization
     protected $withEntries = false;
     protected $uriCacheEnabled = true;
     protected $syncOriginalProperties = ['tree'];
+    protected $saving = false;
 
     public function idKey()
     {
@@ -52,7 +53,7 @@ abstract class Tree implements Contract, Localization
             return $this;
         }
 
-        if (count(func_get_args()) !== 0) {
+        if (func_num_args() > 0) {
             return $this;
         }
 
@@ -72,9 +73,7 @@ abstract class Tree implements Contract, Localization
             return Cache::remember(
                 $key,
                 now()->addSeconds(Config::get('statamic.structures.cache_ttl')),
-                function () {
-                    return $this->structure()->validateTree($this->tree, $this->locale());
-                },
+                fn () => $this->structure()->validateTree($this->tree, $this->locale()),
             );
         });
     }
@@ -120,6 +119,10 @@ abstract class Tree implements Contract, Localization
 
     public function pages()
     {
+        if ($this->saving) {
+            return;
+        }
+
         $pages = $this->tree();
 
         if ($this->root()) {
@@ -147,7 +150,7 @@ abstract class Tree implements Contract, Localization
             return static::$cachedFlattenedPages[$key];
         }
 
-        return static::$cachedFlattenedPages[$key] = $this->pages()->flattenedPages();
+        return static::$cachedFlattenedPages[$key] = $this->pages()?->flattenedPages();
     }
 
     public function uris()
@@ -192,6 +195,8 @@ abstract class Tree implements Contract, Localization
 
     public function save()
     {
+        $this->saving = true;
+
         static::$cachedFlattenedPages[$this->treeHash()] = null;
 
         $this->repository()->save($this);
@@ -199,6 +204,8 @@ abstract class Tree implements Contract, Localization
         $this->dispatchSavedEvent();
 
         $this->syncOriginal();
+
+        $this->saving = false;
     }
 
     public static function clearAllCachedFlattenedPages()

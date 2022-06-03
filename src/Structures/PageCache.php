@@ -92,8 +92,8 @@ class PageCache
 
     protected function prebuild(array $methods)
     {
-        foreach ($methods as $method) {
-            $this->get($method);
+        foreach ($methods as $method => $params) {
+            $this->get($method, ...$params);
         }
     }
 

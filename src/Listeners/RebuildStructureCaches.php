@@ -11,8 +11,11 @@ use Statamic\Events\EntrySaved;
 use Statamic\Events\NavDeleted;
 use Statamic\Events\NavSaved;
 use Statamic\Events\NavTreeDeleted;
+use Statamic\Facades\Blink;
 use Statamic\Events\NavTreeSaved;
+use Statamic\Structures\Page;
 use Statamic\Structures\PageCache;
+use Statamic\Structures\Tree;
 
 class RebuildStructureCaches
 {
@@ -24,23 +27,27 @@ class RebuildStructureCaches
     public function subscribe($events)
     {
         $events->listen([
-            EntryDeleted::class,
             EntrySaved::class,
-        ], [self::class, 'handleEntryEvents']);
+        ], [self::class, 'rebuildEntryPageCaches']);
+
+        $events->listen([
+            EntryDeleted::class,
+        ], [self::class, 'forgetEntryPageCaches']);
 
         $events->listen([
             CollectionDeleted::class,
             CollectionSaved::class,
-            CollectionTreeDeleted::class,
-            CollectionTreeSaved::class,
         ], [self::class, 'handleCollectionEvents']);
 
         $events->listen([
-            NavDeleted::class,
-            NavSaved::class,
-            NavTreeDeleted::class,
+            CollectionTreeSaved::class,
             NavTreeSaved::class,
-        ], [self::class, 'handleNavEvents']);
+        ], [self::class, 'rebuildTreePageCaches']);
+
+        $events->listen([
+            CollectionTreeDeleted::class,
+            NavTreeDeleted::class,
+        ], [self::class, 'forgetTreePageCaches']);
     }
 
     public function handleCollectionEvents($event)
@@ -48,33 +55,72 @@ class RebuildStructureCaches
         // TODO: All page caches for pages in the collection can be erased
     }
 
-    public function handleEntryEvents($event)
+    public function rebuildEntryPageCaches($event)
     {
         $entry = $event->entry;
+
+        if (! $entry->collection()->hasStructure()) {
+            return;
+        }
 
         $page = $entry->collection()->structure()->in($entry->site()->handle())
             ->flattenedPages()
             ->where('id', $entry->id())
             ->first();
 
-        $this->rebuildPageCaches($page);
-    }
-
-    public function handleNavEvents($event)
-    {
-        $tree = $event->tree->tree();
-
-        $event->tree->flattenedPages()->each(function ($page) {
+        if ($page) {
             $this->rebuildPageCaches($page);
-        });
+        }
     }
 
-    protected function rebuildPageCaches($page)
+    public function forgetEntryPageCaches($event)
+    {
+        $entry = $event->entry;
+
+        if (! $entry->collection()->hasStructure()) {
+            return;
+        }
+
+        $page = $entry->collection()->structure()->in($entry->site()->handle())
+            ->flattenedPages()
+            ->where('id', $entry->id())
+            ->first();
+
+        if ($page) {
+            $this->forgetPageCaches($page);
+        }
+    }
+
+    public function rebuildTreePageCaches($event)
+    {
+        if ($pages = $event->tree->pages()) {
+            $pages->all()->each(function ($page) {
+                $this->rebuildPageCaches($page);
+            });
+        }
+    }
+
+    public function forgetTreePageCaches($event)
+    {
+        if ($pages = $event->tree->pages()) {
+            $pages->all()->each(function ($page) {
+                $this->forgetPageCaches($page);
+            });
+        }
+    }
+
+    protected function rebuildPageCaches(Page $page)
     {
         (new PageCache($page))->rebuildAll([
-            'toAugmentedArray',
-            'urlWithoutRedirect',
-            'absoluteUrl',
+            'toAugmentedArray' => [['*']],
+            'toAugmentedArray' => [['@shallow']],
+            'urlWithoutRedirect' => [],
+            'absoluteUrl' => [],
         ]);
+    }
+
+    protected function forgetPageCaches(Page $page)
+    {
+        (new PageCache($page))->forgetAll();
     }
 }
